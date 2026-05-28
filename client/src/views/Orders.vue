@@ -27,6 +27,48 @@
         </div>
       </div>
 
+      <!-- Submitted Restocking Orders section - only shown when orders exist -->
+      <div v-if="restockingOrders.length > 0" class="card restocking-section">
+        <div class="card-header">
+          <h3 class="card-title">Submitted Restocking Orders</h3>
+          <span class="restocking-count">{{ restockingOrders.length }} order{{ restockingOrders.length !== 1 ? 's' : '' }}</span>
+        </div>
+        <div class="table-container">
+          <table class="restocking-table">
+            <thead>
+              <tr>
+                <th>Order #</th>
+                <th>Items</th>
+                <th>Status</th>
+                <th>Ordered</th>
+                <th>Est. Delivery</th>
+                <th>Total Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in restockingOrders" :key="order.order_number">
+                <td><strong>{{ order.order_number }}</strong></td>
+                <td>
+                  <details class="items-details">
+                    <summary class="items-summary">{{ order.items.length }} item{{ order.items.length !== 1 ? 's' : '' }}</summary>
+                    <div class="items-dropdown">
+                      <div v-for="item in order.items" :key="item.sku" class="item-entry">
+                        <span class="item-name">{{ item.name }}</span>
+                        <span class="item-meta">Qty: {{ item.quantity }} @ ${{ item.unit_price }}</span>
+                      </div>
+                    </div>
+                  </details>
+                </td>
+                <td><span class="badge submitted">Submitted</span></td>
+                <td>{{ formatDate(order.order_date) }}</td>
+                <td>{{ formatDate(order.expected_delivery) }}</td>
+                <td><strong>${{ order.total_value.toLocaleString() }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <h3 class="card-title">{{ t('orders.allOrders') }} ({{ orders.length }})</h3>
@@ -105,6 +147,16 @@ export default {
       getCurrentFilters
     } = useFilters()
 
+    const restockingOrders = ref([])
+
+    const loadRestockingOrders = async () => {
+      try {
+        restockingOrders.value = await api.getRestockingOrders()
+      } catch (err) {
+        console.error('Failed to load restocking orders:', err)
+      }
+    }
+
     const loadOrders = async () => {
       try {
         loading.value = true
@@ -127,6 +179,7 @@ export default {
     // Watch for filter changes and reload data
     watch([selectedPeriod, selectedLocation, selectedCategory, selectedStatus], () => {
       loadOrders()
+      loadRestockingOrders()
     })
 
     const getOrdersByStatus = (status) => {
@@ -153,13 +206,17 @@ export default {
       })
     }
 
-    onMounted(loadOrders)
+    onMounted(() => {
+      loadOrders()
+      loadRestockingOrders()
+    })
 
     return {
       t,
       loading,
       error,
       orders,
+      restockingOrders,
       getOrdersByStatus,
       getOrderStatusClass,
       formatDate,
@@ -275,5 +332,26 @@ export default {
 .item-meta {
   font-size: 0.813rem;
   color: #64748b;
+}
+
+.restocking-section {
+  border-left: 4px solid #6366f1;
+  background: #fafafa;
+}
+
+.restocking-count {
+  font-size: 0.813rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.restocking-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.badge.submitted {
+  background: #ede9fe;
+  color: #4c1d95;
 }
 </style>
